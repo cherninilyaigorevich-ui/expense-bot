@@ -3,6 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 
 from app.config import BOT_TOKEN
+from app.handlers.expenses import router as expenses_router
 from app.handlers.start import router as start_router
 
 
@@ -12,6 +13,7 @@ async def main() -> None:
     dp = Dispatcher()
 
     dp.include_router(start_router)
+    dp.include_router(expenses_router)
 
     await dp.start_polling(bot)
 
