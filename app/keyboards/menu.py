@@ -18,6 +18,8 @@ def main_menu() -> ReplyKeyboardMarkup:
             ],
         ],
         resize_keyboard=True,
+        is_persistent=True,
+        input_field_placeholder="Выбери действие",
     )
 
 
@@ -28,49 +30,41 @@ def expense_categories() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text="🍔 Продукты",
                     callback_data="expense_category:food",
-                )
-            ],
-            [
+                ),
                 InlineKeyboardButton(
                     text="🍽 Кафе",
                     callback_data="expense_category:cafe",
-                )
+                ),
             ],
             [
                 InlineKeyboardButton(
-                    text="🚕 Транспорт/Автомобиль",
+                    text="🚕 Транспорт/Авто",
                     callback_data="expense_category:transport",
-                )
-            ],
-            [
+                ),
                 InlineKeyboardButton(
                     text="🏠 Дом",
                     callback_data="expense_category:home",
-                )
+                ),
             ],
             [
                 InlineKeyboardButton(
                     text="🎮 Развлечения",
                     callback_data="expense_category:entertainment",
-                )
-            ],
-            [
+                ),
                 InlineKeyboardButton(
                     text="👕 Одежда",
                     callback_data="expense_category:clothes",
-                )
+                ),
             ],
             [
                 InlineKeyboardButton(
                     text="💊 Здоровье",
                     callback_data="expense_category:health",
-                )
-            ],
-            [
+                ),
                 InlineKeyboardButton(
                     text="✈️ Путешествия",
                     callback_data="expense_category:travel",
-                )
+                ),
             ],
             [
                 InlineKeyboardButton(
