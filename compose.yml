@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: expense-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - expense_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - expense-net
+
+networks:
+  expense-net:
+    name: expense-net
+
+volumes:
+  expense_postgres_data:
