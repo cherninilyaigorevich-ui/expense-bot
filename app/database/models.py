@@ -1,7 +1,14 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Date, DateTime, Numeric, String, func
+from sqlalchemy import (
+    BigInteger,
+    Date,
+    DateTime,
+    Numeric,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -10,7 +17,9 @@ from app.database.base import Base
 class Expense(Base):
     __tablename__ = "expenses"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+    )
 
     telegram_user_id: Mapped[int] = mapped_column(
         BigInteger,
@@ -21,6 +30,12 @@ class Expense(Base):
     telegram_chat_id: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
+        index=True,
+    )
+
+    message_thread_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
         index=True,
     )
 

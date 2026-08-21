@@ -10,14 +10,22 @@ from aiogram.types import (
     Message,
 )
 
-from app.database.repository import create_expense
-from app.keyboards.menu import expense_categories, main_menu
-from app.states import AddExpense
 from app.constants import CATEGORY_NAMES
+from app.database.repository import (
+    create_expense,
+    get_month_total,
+)
+from app.keyboards.menu import expense_categories
+from app.states import AddExpense
+
 
 router = Router()
 
 MAX_EXPENSE_AMOUNT = Decimal("100000000.00")
+
+
+def format_money(amount: Decimal) -> str:
+    return f"{amount:,.2f}".replace(",", " ")
 
 
 def date_keyboard() -> InlineKeyboardMarkup:
@@ -68,7 +76,7 @@ async def add_expense_handler(
     await state.clear()
 
     await message.answer(
-        "Выбери категорию расхода:",
+        "💸 Выбери категорию расхода:",
         reply_markup=expense_categories(),
     )
 
@@ -103,8 +111,8 @@ async def category_selected_handler(
     await callback.answer()
 
     await callback.message.answer(
-        f"Категория: {CATEGORY_NAMES[category]}\n\n"
-        "Введи сумму расхода:"
+        f"{CATEGORY_NAMES[category]}\n\n"
+        "💰 Введи сумму расхода:"
     )
 
 
@@ -128,10 +136,11 @@ async def amount_handler(
 
     try:
         amount = Decimal(normalized_amount)
+
     except InvalidOperation:
         await message.answer(
             "❌ Не удалось распознать сумму.\n\n"
-            "Примеры:\n"
+            "Например:\n"
             "1500\n"
             "1250,50"
         )
@@ -170,7 +179,7 @@ async def amount_handler(
     )
 
     await message.answer(
-        "Когда был расход?",
+        "📅 Когда был расход?",
         reply_markup=date_keyboard(),
     )
 
@@ -195,12 +204,13 @@ async def date_selected_handler(
 
     elif choice == "yesterday":
         expense_date = (
-            date.today() - timedelta(days=1)
+            date.today()
+            - timedelta(days=1)
         )
 
     elif choice == "manual":
         await callback.message.answer(
-            "Введи дату в формате ДД.ММ.ГГГГ\n\n"
+            "📅 Введи дату в формате ДД.ММ.ГГГГ\n\n"
             "Например: 18.08.2026"
         )
         return
@@ -225,7 +235,7 @@ async def manual_date_handler(
 ) -> None:
     if not message.text:
         await message.answer(
-            "Введи дату в формате ДД.ММ.ГГГГ."
+            "❌ Введи дату в формате ДД.ММ.ГГГГ."
         )
         return
 
@@ -271,9 +281,9 @@ async def show_confirmation(
     )
 
     await message.answer(
-        "Проверь расход:\n\n"
+        "🔎 Проверь расход:\n\n"
         f"{CATEGORY_NAMES[category]}\n"
-        f"💰 {amount:,.2f} ₽\n"
+        f"💰 {format_money(amount)} ₽\n"
         f"📅 {expense_date.strftime('%d.%m.%Y')}",
         reply_markup=confirmation_keyboard(),
     )
@@ -299,22 +309,40 @@ async def save_expense_handler(
         data["expense_date"]
     )
 
+    chat_id = callback.message.chat.id
+    message_thread_id = callback.message.message_thread_id
+
     expense = await create_expense(
         telegram_user_id=callback.from_user.id,
-        telegram_chat_id=callback.message.chat.id,
+        telegram_chat_id=chat_id,
+        message_thread_id=message_thread_id,
         category=category,
         amount=amount,
         expense_date=expense_date,
     )
 
+    month_start = expense.expense_date.replace(
+        day=1
+    )
+
+    month_total = await get_month_total(
+        telegram_chat_id=chat_id,
+        message_thread_id=message_thread_id,
+        date_from=month_start,
+        date_to=expense.expense_date,
+    )
+
+    user_name = callback.from_user.full_name
+
     await callback.answer()
 
     await callback.message.answer(
-        "✅ Расход сохранён\n\n"
-        f"{CATEGORY_NAMES[expense.category]}\n"
-        f"💰 {expense.amount:,.2f} ₽\n"
-        f"📅 {expense.expense_date.strftime('%d.%m.%Y')}",
-        reply_markup=main_menu(),
+        "💸 Новый расход\n\n"
+        f"{CATEGORY_NAMES[expense.category]} — "
+        f"{format_money(expense.amount)} ₽\n"
+        f"👤 {user_name}\n"
+        f"📅 {expense.expense_date.strftime('%d.%m.%Y')}\n\n"
+        f"📊 За месяц: {format_money(month_total)} ₽"
     )
 
     await state.clear()
@@ -334,6 +362,5 @@ async def cancel_expense_handler(
 
     if callback.message is not None:
         await callback.message.answer(
-            "❌ Добавление расхода отменено.",
-            reply_markup=main_menu(),
+            "❌ Добавление расхода отменено."
         )
