@@ -1,7 +1,11 @@
 import asyncio
 from datetime import date
 
-from app.services.archive import update_month_archive
+from app.database.repository import count_budget_expenses
+from app.services.archive import (
+    get_month_bounds,
+    update_month_archive,
+)
 from app.services.retention import cleanup_old_expenses
 
 
@@ -30,20 +34,41 @@ async def main() -> None:
         today
     )
 
-    print(
-        f"Archiving {year}-{month:02d}..."
-    )
-
-    file_id = await update_month_archive(
-        budget_id=FAMILY_BUDGET_ID,
+    date_from, date_to = get_month_bounds(
         year=year,
         month=month,
     )
 
-    print(
-        f"Archive successfully updated. "
-        f"Google Drive file ID: {file_id}"
+    expenses_count = await count_budget_expenses(
+        budget_id=FAMILY_BUDGET_ID,
+        date_from=date_from,
+        date_to=date_to,
     )
+
+    if expenses_count == 0:
+        print(
+            f"Archive skipped: "
+            f"{year}-{month:02d} has no expenses."
+        )
+
+    else:
+        print(
+            f"Archiving {year}-{month:02d} "
+            f"({expenses_count} expenses)..."
+        )
+
+        file_id = await update_month_archive(
+            budget_id=FAMILY_BUDGET_ID,
+            year=year,
+            month=month,
+        )
+
+        print(
+            "Archive successfully updated. "
+            f"Google Drive file ID: {file_id}"
+        )
+
+    print("Running retention...")
 
     deleted = await cleanup_old_expenses(
         budget_id=FAMILY_BUDGET_ID,

@@ -265,6 +265,35 @@ async def get_budget_total(
         )
 
 
+async def count_budget_expenses(
+    budget_id: int,
+    date_from: date,
+    date_to: date,
+) -> int:
+    """Посчитать активные расходы бюджета за период."""
+
+    async with SessionFactory() as session:
+        query = (
+            select(
+                func.count(Expense.id)
+            )
+            .where(
+                Expense.budget_id == budget_id,
+                Expense.is_deleted.is_(False),
+                Expense.expense_date >= date_from,
+                Expense.expense_date <= date_to,
+            )
+        )
+
+        result = await session.execute(
+            query
+        )
+
+        return int(
+            result.scalar_one()
+        )
+
+
 async def get_budget_expenses(
     budget_id: int,
     date_from: date,
@@ -521,11 +550,7 @@ async def delete_archived_month_expenses(
     year: int,
     month: int,
 ) -> int:
-    """Физически удалить расходы архивированного месяца.
-
-    Расходы удаляются только если месяц уже зарегистрирован
-    в archive_months.
-    """
+    """Физически удалить расходы архивированного месяца."""
 
     archived = await is_month_archived(
         budget_id=budget_id,
@@ -576,9 +601,7 @@ async def delete_archived_month_expenses(
 
 # ============================================================
 # LEGACY
-#
-# Старые функции пока оставляем до полного перехода
-# приложения на budget_id.
+# Пока оставляем до полного перехода на budget_id.
 # ============================================================
 
 
