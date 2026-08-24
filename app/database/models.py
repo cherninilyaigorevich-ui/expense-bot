@@ -63,6 +63,11 @@ class Budget(Base):
         back_populates="budget",
     )
 
+    archives: Mapped[list["ArchiveMonth"]] = relationship(
+        back_populates="budget",
+        cascade="all, delete-orphan",
+    )
+
 
 class BudgetMember(Base):
     __tablename__ = "budget_members"
@@ -107,6 +112,50 @@ class BudgetMember(Base):
 
     budget: Mapped["Budget"] = relationship(
         back_populates="members",
+    )
+
+
+class ArchiveMonth(Base):
+    __tablename__ = "archive_months"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "budget_id",
+            "year",
+            "month",
+            name="uq_archive_month",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+    )
+
+    budget_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "budgets.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    year: Mapped[int] = mapped_column(
+        nullable=False,
+    )
+
+    month: Mapped[int] = mapped_column(
+        nullable=False,
+    )
+
+    archived_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    budget: Mapped["Budget"] = relationship(
+        back_populates="archives",
     )
 
 

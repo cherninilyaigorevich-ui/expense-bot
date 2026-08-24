@@ -2,9 +2,10 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from app.database.models import (
+    ArchiveMonth,
     Budget,
     BudgetMember,
     Expense,
@@ -107,7 +108,7 @@ async def add_budget_member(
 async def get_user_budget(
     telegram_user_id: int,
 ) -> Budget | None:
-    """Получить бюджет, в котором состоит пользователь."""
+    """Получить бюджет пользователя."""
 
     async with SessionFactory() as session:
         query = (
@@ -136,7 +137,7 @@ async def set_budget_dashboard(
     message_thread_id: int | None,
     dashboard_message_id: int,
 ) -> None:
-    """Сохранить расположение dashboard бюджета в Telegram."""
+    """Сохранить расположение dashboard бюджета."""
 
     async with SessionFactory() as session:
         budget = await session.get(
@@ -356,7 +357,7 @@ async def get_recent_user_expenses(
     telegram_user_id: int,
     limit: int = 10,
 ) -> list[Expense]:
-    """Получить последние расходы конкретного пользователя."""
+    """Получить последние расходы пользователя."""
 
     async with SessionFactory() as session:
         query = (
@@ -446,13 +447,138 @@ async def soft_delete_expense(
         return True
 
 
+async def mark_month_archived(
+    budget_id: int,
+    year: int,
+    month: int,
+) -> None:
+    """Зафиксировать успешную архивацию месяца."""
+
+    async with SessionFactory() as session:
+        query = (
+            select(ArchiveMonth)
+            .where(
+                ArchiveMonth.budget_id == budget_id,
+                ArchiveMonth.year == year,
+                ArchiveMonth.month == month,
+            )
+            .limit(1)
+        )
+
+        result = await session.execute(
+            query
+        )
+
+        archive = result.scalar_one_or_none()
+
+        if archive is None:
+            archive = ArchiveMonth(
+                budget_id=budget_id,
+                year=year,
+                month=month,
+            )
+
+            session.add(archive)
+
+        else:
+            archive.archived_at = datetime.now(
+                timezone.utc
+            )
+
+        await session.commit()
+
+
+async def is_month_archived(
+    budget_id: int,
+    year: int,
+    month: int,
+) -> bool:
+    """Проверить, архивирован ли месяц."""
+
+    async with SessionFactory() as session:
+        query = (
+            select(ArchiveMonth.id)
+            .where(
+                ArchiveMonth.budget_id == budget_id,
+                ArchiveMonth.year == year,
+                ArchiveMonth.month == month,
+            )
+            .limit(1)
+        )
+
+        result = await session.execute(
+            query
+        )
+
+        return (
+            result.scalar_one_or_none()
+            is not None
+        )
+
+
+async def delete_archived_month_expenses(
+    budget_id: int,
+    year: int,
+    month: int,
+) -> int:
+    """Физически удалить расходы архивированного месяца.
+
+    Расходы удаляются только если месяц уже зарегистрирован
+    в archive_months.
+    """
+
+    archived = await is_month_archived(
+        budget_id=budget_id,
+        year=year,
+        month=month,
+    )
+
+    if not archived:
+        return 0
+
+    date_from = date(
+        year,
+        month,
+        1,
+    )
+
+    if month == 12:
+        date_to = date(
+            year + 1,
+            1,
+            1,
+        )
+    else:
+        date_to = date(
+            year,
+            month + 1,
+            1,
+        )
+
+    async with SessionFactory() as session:
+        query = (
+            delete(Expense)
+            .where(
+                Expense.budget_id == budget_id,
+                Expense.expense_date >= date_from,
+                Expense.expense_date < date_to,
+            )
+        )
+
+        result = await session.execute(
+            query
+        )
+
+        await session.commit()
+
+        return result.rowcount or 0
+
+
 # ============================================================
 # LEGACY
 #
-# Эти функции пока оставляем для совместимости со старой
-# архитектурой chat_id + message_thread_id.
-#
-# После полного перехода приложения на budget_id их удалим.
+# Старые функции пока оставляем до полного перехода
+# приложения на budget_id.
 # ============================================================
 
 
@@ -549,7 +675,7 @@ async def get_month_total(
     date_from: date,
     date_to: date,
 ) -> Decimal:
-    """Legacy: общая сумма по Telegram-чату/топику."""
+    """Legacy: сумма по Telegram-чату/топику."""
 
     async with SessionFactory() as session:
         filters = [
