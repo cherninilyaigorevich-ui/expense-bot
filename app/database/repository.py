@@ -3,7 +3,11 @@ from decimal import Decimal
 
 from sqlalchemy import func, select
 
-from app.database.models import Expense
+from app.database.models import (
+    Budget,
+    BudgetMember,
+    Expense,
+)
 from app.database.session import SessionFactory
 
 
@@ -14,6 +18,7 @@ async def create_expense(
     category: str,
     amount: Decimal,
     expense_date: date,
+    budget_id: int | None = None,
 ) -> Expense:
     """Создать новый расход."""
 
@@ -22,6 +27,7 @@ async def create_expense(
             telegram_user_id=telegram_user_id,
             telegram_chat_id=telegram_chat_id,
             message_thread_id=message_thread_id,
+            budget_id=budget_id,
             category=category,
             amount=amount,
             expense_date=expense_date,
@@ -35,13 +41,221 @@ async def create_expense(
         return expense
 
 
+async def create_budget(
+    name: str,
+) -> Budget:
+    """Создать бюджет."""
+
+    async with SessionFactory() as session:
+        budget = Budget(
+            name=name,
+        )
+
+        session.add(budget)
+
+        await session.commit()
+        await session.refresh(budget)
+
+        return budget
+
+
+async def get_budget(
+    budget_id: int,
+) -> Budget | None:
+    """Получить бюджет по ID."""
+
+    async with SessionFactory() as session:
+        return await session.get(
+            Budget,
+            budget_id,
+        )
+
+
+async def add_budget_member(
+    budget_id: int,
+    telegram_user_id: int,
+) -> BudgetMember:
+    """Добавить Telegram-пользователя в бюджет."""
+
+    async with SessionFactory() as session:
+        member = BudgetMember(
+            budget_id=budget_id,
+            telegram_user_id=telegram_user_id,
+        )
+
+        session.add(member)
+
+        await session.commit()
+        await session.refresh(member)
+
+        return member
+
+
+async def get_user_budget(
+    telegram_user_id: int,
+) -> Budget | None:
+    """Получить бюджет, в котором состоит пользователь."""
+
+    async with SessionFactory() as session:
+        query = (
+            select(Budget)
+            .join(
+                BudgetMember,
+                BudgetMember.budget_id == Budget.id,
+            )
+            .where(
+                BudgetMember.telegram_user_id
+                == telegram_user_id
+            )
+            .limit(1)
+        )
+
+        result = await session.execute(
+            query
+        )
+
+        return result.scalar_one_or_none()
+
+
+async def set_budget_dashboard(
+    budget_id: int,
+    telegram_chat_id: int,
+    message_thread_id: int | None,
+    dashboard_message_id: int,
+) -> None:
+    """Сохранить Telegram-расположение dashboard бюджета."""
+
+    async with SessionFactory() as session:
+        budget = await session.get(
+            Budget,
+            budget_id,
+        )
+
+        if budget is None:
+            raise ValueError(
+                f"Budget {budget_id} not found"
+            )
+
+        budget.telegram_chat_id = telegram_chat_id
+        budget.message_thread_id = message_thread_id
+        budget.dashboard_message_id = dashboard_message_id
+
+        await session.commit()
+
+
+async def get_budget_statistics(
+    budget_id: int,
+    date_from: date,
+    date_to: date,
+) -> tuple[Decimal, int, list[tuple[str, Decimal]]]:
+    """Получить общую статистику бюджета за период."""
+
+    async with SessionFactory() as session:
+        filters = [
+            Expense.budget_id == budget_id,
+            Expense.expense_date >= date_from,
+            Expense.expense_date <= date_to,
+        ]
+
+        total_query = (
+            select(
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    Decimal("0.00"),
+                ),
+                func.count(Expense.id),
+            )
+            .where(*filters)
+        )
+
+        total_result = await session.execute(
+            total_query
+        )
+
+        total_amount, operations_count = (
+            total_result.one()
+        )
+
+        categories_query = (
+            select(
+                Expense.category,
+                func.sum(
+                    Expense.amount
+                ).label("total"),
+            )
+            .where(*filters)
+            .group_by(
+                Expense.category
+            )
+            .order_by(
+                func.sum(
+                    Expense.amount
+                ).desc()
+            )
+        )
+
+        categories_result = await session.execute(
+            categories_query
+        )
+
+        categories = [
+            (category, amount)
+            for category, amount
+            in categories_result.all()
+        ]
+
+        return (
+            Decimal(total_amount),
+            operations_count,
+            categories,
+        )
+
+
+async def get_budget_total(
+    budget_id: int,
+    date_from: date,
+    date_to: date,
+) -> Decimal:
+    """Получить общую сумму расходов бюджета за период."""
+
+    async with SessionFactory() as session:
+        query = (
+            select(
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    Decimal("0.00"),
+                )
+            )
+            .where(
+                Expense.budget_id == budget_id,
+                Expense.expense_date >= date_from,
+                Expense.expense_date <= date_to,
+            )
+        )
+
+        result = await session.execute(
+            query
+        )
+
+        return Decimal(
+            result.scalar_one()
+        )
+
+
+# ============================================================
+# LEGACY
+# Старые функции временно оставляем до завершения миграции.
+# После перехода всего приложения на budget_id удалим их.
+# ============================================================
+
+
 async def get_expense_statistics(
     telegram_chat_id: int,
     message_thread_id: int | None,
     date_from: date,
     date_to: date,
 ) -> tuple[Decimal, int, list[tuple[str, Decimal]]]:
-    """Получить статистику расходов за период."""
+    """Legacy: статистика по Telegram-чату/топику."""
 
     async with SessionFactory() as session:
         filters = [
@@ -119,7 +333,7 @@ async def get_month_total(
     date_from: date,
     date_to: date,
 ) -> Decimal:
-    """Получить общую сумму расходов за период."""
+    """Legacy: сумма по Telegram-чату/топику."""
 
     async with SessionFactory() as session:
         filters = [

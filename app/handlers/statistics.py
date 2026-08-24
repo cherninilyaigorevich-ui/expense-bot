@@ -5,7 +5,10 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
 
 from app.constants import CATEGORY_NAMES
-from app.database.repository import get_expense_statistics
+from app.database.repository import (
+    get_budget_statistics,
+    get_user_budget,
+)
 from app.keyboards.statistics import statistics_period_keyboard
 
 
@@ -20,6 +23,19 @@ def format_money(amount: Decimal) -> str:
 async def statistics_handler(
     message: Message,
 ) -> None:
+    if message.from_user is None:
+        return
+
+    budget = await get_user_budget(
+        telegram_user_id=message.from_user.id,
+    )
+
+    if budget is None:
+        await message.answer(
+            "⛔ У вас нет доступа к семейному бюджету."
+        )
+        return
+
     await message.answer(
         "📊 Выбери период:",
         reply_markup=statistics_period_keyboard(),
@@ -33,6 +49,17 @@ async def statistics_period_handler(
     callback: CallbackQuery,
 ) -> None:
     if callback.data is None or callback.message is None:
+        return
+
+    budget = await get_user_budget(
+        telegram_user_id=callback.from_user.id,
+    )
+
+    if budget is None:
+        await callback.answer(
+            "Нет доступа к семейному бюджету.",
+            show_alert=True,
+        )
         return
 
     period = callback.data.split(":", 1)[1]
@@ -66,8 +93,8 @@ async def statistics_period_handler(
     await callback.answer()
 
     total_amount, operations_count, categories = (
-        await get_expense_statistics(
-            telegram_chat_id=callback.message.chat.id,
+        await get_budget_statistics(
+            budget_id=budget.id,
             date_from=date_from,
             date_to=date_to,
         )
@@ -104,7 +131,7 @@ async def statistics_period_handler(
     )
 
     await callback.message.answer(
-        f"📊 Статистика за {title}\n\n"
+        f"📊 Семейный бюджет за {title}\n\n"
         f"💰 Всего: {format_money(total_amount)} ₽\n"
         f"🧾 Операций: {operations_count}\n\n"
         f"{categories_text}\n\n"

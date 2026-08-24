@@ -13,9 +13,10 @@ from aiogram.types import (
 from app.constants import CATEGORY_NAMES
 from app.database.repository import (
     create_expense,
-    get_month_total,
+    get_user_budget,
 )
 from app.keyboards.menu import expense_categories
+from app.services.dashboard import update_budget_dashboard
 from app.states import AddExpense
 
 
@@ -73,7 +74,26 @@ async def add_expense_handler(
     message: Message,
     state: FSMContext,
 ) -> None:
+    if message.from_user is None:
+        return
+
+    budget = await get_user_budget(
+        telegram_user_id=message.from_user.id,
+    )
+
+    if budget is None:
+        await state.clear()
+
+        await message.answer(
+            "⛔ У вас нет доступа к семейному бюджету."
+        )
+        return
+
     await state.clear()
+
+    await state.update_data(
+        budget_id=budget.id,
+    )
 
     await message.answer(
         "💸 Выбери категорию расхода:",
@@ -96,6 +116,17 @@ async def category_selected_handler(
     if category not in CATEGORY_NAMES:
         await callback.answer(
             "Неизвестная категория.",
+            show_alert=True,
+        )
+        return
+
+    data = await state.get_data()
+
+    if "budget_id" not in data:
+        await state.clear()
+
+        await callback.answer(
+            "Сессия устарела. Начни добавление расхода заново.",
             show_alert=True,
         )
         return
@@ -302,6 +333,17 @@ async def save_expense_handler(
 
     data = await state.get_data()
 
+    budget_id = data.get("budget_id")
+
+    if budget_id is None:
+        await state.clear()
+
+        await callback.answer(
+            "Сессия устарела.",
+            show_alert=True,
+        )
+        return
+
     category = data["category"]
     amount = Decimal(data["amount"])
 
@@ -309,40 +351,28 @@ async def save_expense_handler(
         data["expense_date"]
     )
 
-    chat_id = callback.message.chat.id
-    message_thread_id = callback.message.message_thread_id
-
     expense = await create_expense(
         telegram_user_id=callback.from_user.id,
-        telegram_chat_id=chat_id,
-        message_thread_id=message_thread_id,
+        telegram_chat_id=callback.message.chat.id,
+        message_thread_id=callback.message.message_thread_id,
+        budget_id=budget_id,
         category=category,
         amount=amount,
         expense_date=expense_date,
     )
 
-    month_start = expense.expense_date.replace(
-        day=1
+    await update_budget_dashboard(
+        bot=callback.bot,
+        budget_id=budget_id,
     )
-
-    month_total = await get_month_total(
-        telegram_chat_id=chat_id,
-        message_thread_id=message_thread_id,
-        date_from=month_start,
-        date_to=expense.expense_date,
-    )
-
-    user_name = callback.from_user.full_name
 
     await callback.answer()
 
     await callback.message.answer(
-        "💸 Новый расход\n\n"
+        "✅ Расход добавлен\n\n"
         f"{CATEGORY_NAMES[expense.category]} — "
         f"{format_money(expense.amount)} ₽\n"
-        f"👤 {user_name}\n"
-        f"📅 {expense.expense_date.strftime('%d.%m.%Y')}\n\n"
-        f"📊 За месяц: {format_money(month_total)} ₽"
+        f"📅 {expense.expense_date.strftime('%d.%m.%Y')}"
     )
 
     await state.clear()
