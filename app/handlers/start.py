@@ -15,13 +15,6 @@ async def start_handler(
     if message.from_user is None:
         return
 
-    # Временно выводим Telegram ID пользователя в консоль.
-    print(
-        "USER:",
-        message.from_user.id,
-        message.from_user.full_name,
-    )
-
     await message.answer(
         "💰 Семейный бюджет\n\n"
         "Здесь можно добавлять расходы, "

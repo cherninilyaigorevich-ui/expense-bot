@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import Path
 
 from google.auth.transport.requests import Request
@@ -7,8 +8,6 @@ from googleapiclient.http import (
     MediaFileUpload,
     MediaIoBaseDownload,
 )
-
-from io import BytesIO
 
 
 TOKEN_FILE = Path(
@@ -20,6 +19,8 @@ SCOPES = [
 ]
 
 EXPENSES_FOLDER_NAME = "expenses"
+DATABASE_BACKUPS_FOLDER_NAME = "database_backups"
+
 ARCHIVE_FILE_NAME = "family_expenses.xlsx"
 
 
@@ -32,7 +33,9 @@ def get_drive_service():
     )
 
     if credentials.expired and credentials.refresh_token:
-        credentials.refresh(Request())
+        credentials.refresh(
+            Request()
+        )
 
         TOKEN_FILE.write_text(
             credentials.to_json(),
@@ -50,7 +53,7 @@ def find_folder(
     service,
     folder_name: str,
 ) -> str | None:
-    """Найти папку в Google Drive по имени."""
+    """Найти папку в корне Google Drive."""
 
     query = (
         "mimeType='application/vnd.google-apps.folder' "
@@ -84,7 +87,7 @@ def create_folder(
     service,
     folder_name: str,
 ) -> str:
-    """Создать папку в Google Drive."""
+    """Создать папку в корне Google Drive."""
 
     metadata = {
         "name": folder_name,
@@ -121,6 +124,98 @@ def get_or_create_expenses_folder(
     return create_folder(
         service=service,
         folder_name=EXPENSES_FOLDER_NAME,
+    )
+
+
+def find_folder_in_parent(
+    service,
+    parent_id: str,
+    folder_name: str,
+) -> str | None:
+    """Найти вложенную папку внутри указанной папки."""
+
+    query = (
+        "mimeType='application/vnd.google-apps.folder' "
+        f"and name='{folder_name}' "
+        f"and '{parent_id}' in parents "
+        "and trashed=false"
+    )
+
+    result = (
+        service.files()
+        .list(
+            q=query,
+            spaces="drive",
+            fields="files(id, name)",
+            pageSize=10,
+        )
+        .execute()
+    )
+
+    files = result.get(
+        "files",
+        [],
+    )
+
+    if not files:
+        return None
+
+    return files[0]["id"]
+
+
+def create_folder_in_parent(
+    service,
+    parent_id: str,
+    folder_name: str,
+) -> str:
+    """Создать вложенную папку."""
+
+    metadata = {
+        "name": folder_name,
+        "mimeType": (
+            "application/vnd.google-apps.folder"
+        ),
+        "parents": [
+            parent_id,
+        ],
+    }
+
+    folder = (
+        service.files()
+        .create(
+            body=metadata,
+            fields="id",
+        )
+        .execute()
+    )
+
+    return folder["id"]
+
+
+def get_or_create_database_backups_folder(
+    service,
+) -> str:
+    """Получить папку expenses/database_backups."""
+
+    expenses_folder_id = (
+        get_or_create_expenses_folder(
+            service
+        )
+    )
+
+    folder_id = find_folder_in_parent(
+        service=service,
+        parent_id=expenses_folder_id,
+        folder_name=DATABASE_BACKUPS_FOLDER_NAME,
+    )
+
+    if folder_id is not None:
+        return folder_id
+
+    return create_folder_in_parent(
+        service=service,
+        parent_id=expenses_folder_id,
+        folder_name=DATABASE_BACKUPS_FOLDER_NAME,
     )
 
 
@@ -164,7 +259,7 @@ def upload_new_file(
     folder_id: str,
     local_file: Path,
 ) -> str:
-    """Загрузить новый XLSX в Google Drive."""
+    """Загрузить новый XLSX-архив."""
 
     metadata = {
         "name": ARCHIVE_FILE_NAME,
@@ -200,7 +295,7 @@ def update_existing_file(
     file_id: str,
     local_file: Path,
 ) -> None:
-    """Обновить содержимое существующего XLSX."""
+    """Обновить существующий XLSX-файл."""
 
     media = MediaFileUpload(
         str(local_file),
@@ -224,7 +319,7 @@ def update_existing_file(
 def upload_or_update_archive(
     local_file: Path,
 ) -> str:
-    """Загрузить новый архив или обновить существующий."""
+    """Создать или обновить family_expenses.xlsx."""
 
     service = get_drive_service()
 
@@ -257,9 +352,9 @@ def upload_or_update_archive(
 def download_archive(
     destination: Path,
 ) -> bool:
-    """Скачать family_expenses.xlsx с Google Drive.
+    """Скачать family_expenses.xlsx.
 
-    Возвращает False, если файл ещё не существует.
+    Возвращает False, если архив ещё не существует.
     """
 
     service = get_drive_service()
@@ -303,3 +398,101 @@ def download_archive(
     )
 
     return True
+
+
+def upload_file_to_folder(
+    service,
+    folder_id: str,
+    local_file: Path,
+) -> str:
+    """Загрузить произвольный файл в папку Google Drive."""
+
+    metadata = {
+        "name": local_file.name,
+        "parents": [
+            folder_id,
+        ],
+    }
+
+    media = MediaFileUpload(
+        str(local_file),
+        mimetype="application/octet-stream",
+        resumable=True,
+    )
+
+    result = (
+        service.files()
+        .create(
+            body=metadata,
+            media_body=media,
+            fields="id, name",
+        )
+        .execute()
+    )
+
+    return result["id"]
+
+
+def list_files_in_folder(
+    service,
+    folder_id: str,
+) -> list[dict]:
+    """Получить список файлов в папке."""
+
+    query = (
+        f"'{folder_id}' in parents "
+        "and trashed=false"
+    )
+
+    result = (
+        service.files()
+        .list(
+            q=query,
+            spaces="drive",
+            fields=(
+                "files("
+                "id,"
+                "name,"
+                "createdTime,"
+                "modifiedTime"
+                ")"
+            ),
+            orderBy="createdTime desc",
+            pageSize=100,
+        )
+        .execute()
+    )
+
+    return result.get(
+        "files",
+        [],
+    )
+
+
+def cleanup_old_backup_files(
+    service,
+    folder_id: str,
+    keep: int = 7,
+) -> list[str]:
+    """Оставить только последние N backup-файлов."""
+
+    files = list_files_in_folder(
+        service=service,
+        folder_id=folder_id,
+    )
+
+    deleted_files: list[str] = []
+
+    if len(files) <= keep:
+        return deleted_files
+
+    for file_info in files[keep:]:
+        service.files().delete(
+            fileId=file_info["id"]
+        ).execute()
+
+        deleted_files.append(
+            file_info["name"]
+        )
+
+    return deleted_files

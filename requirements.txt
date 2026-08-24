@@ -22,12 +22,15 @@ googleapis-common-protos==1.75.1
 greenlet==3.5.5
 httplib2==0.32.0
 idna==3.19
+iniconfig==2.3.0
 magic-filter==1.0.12
 Mako==1.4.1
 MarkupSafe==3.0.3
 multidict==6.7.1
 oauthlib==3.3.1
 openpyxl==3.1.5
+packaging==26.3
+pluggy==1.6.0
 propcache==0.5.2
 proto-plus==1.28.3
 protobuf==7.36.0
@@ -36,7 +39,10 @@ pyasn1_modules==0.4.2
 pycparser==3.0
 pydantic==2.13.4
 pydantic_core==2.46.4
+Pygments==2.21.0
 pyparsing==3.3.2
+pytest==9.1.1
+pytest-asyncio==1.4.0
 python-dotenv==1.2.3
 requests==2.34.2
 requests-oauthlib==2.0.0
