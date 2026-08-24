@@ -14,6 +14,7 @@ def main_menu() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="📊 Статистика"),
             ],
             [
+                KeyboardButton(text="🗑 Последние расходы"),
                 KeyboardButton(text="📤 Выгрузка"),
             ],
         ],
@@ -70,7 +71,7 @@ def expense_categories() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text="📦 Другое",
                     callback_data="expense_category:other",
-                )
+                ),
             ],
         ]
     )

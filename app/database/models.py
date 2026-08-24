@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
@@ -49,8 +50,8 @@ class Budget(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        server_default=func.now(),
         nullable=False,
+        server_default=func.now(),
     )
 
     members: Mapped[list["BudgetMember"]] = relationship(
@@ -95,8 +96,8 @@ class BudgetMember(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        server_default=func.now(),
         nullable=False,
+        server_default=func.now(),
     )
 
     budget: Mapped["Budget"] = relationship(
@@ -109,15 +110,6 @@ class Expense(Base):
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
-    )
-
-    budget_id: Mapped[int | None] = mapped_column(
-        ForeignKey(
-            "budgets.id",
-            ondelete="CASCADE",
-        ),
-        nullable=True,
-        index=True,
     )
 
     telegram_user_id: Mapped[int] = mapped_column(
@@ -134,6 +126,15 @@ class Expense(Base):
 
     message_thread_id: Mapped[int | None] = mapped_column(
         BigInteger,
+        nullable=True,
+        index=True,
+    )
+
+    budget_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "budgets.id",
+            ondelete="CASCADE",
+        ),
         nullable=True,
         index=True,
     )
@@ -155,10 +156,22 @@ class Expense(Base):
         index=True,
     )
 
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        server_default=func.now(),
         nullable=False,
+        server_default=func.now(),
     )
 
     budget: Mapped["Budget | None"] = relationship(

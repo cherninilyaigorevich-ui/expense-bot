@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -75,7 +75,7 @@ async def add_budget_member(
     budget_id: int,
     telegram_user_id: int,
 ) -> BudgetMember:
-    """Добавить Telegram-пользователя в бюджет."""
+    """Добавить пользователя в бюджет."""
 
     async with SessionFactory() as session:
         member = BudgetMember(
@@ -94,7 +94,7 @@ async def add_budget_member(
 async def get_user_budget(
     telegram_user_id: int,
 ) -> Budget | None:
-    """Получить бюджет, в котором состоит пользователь."""
+    """Найти бюджет пользователя."""
 
     async with SessionFactory() as session:
         query = (
@@ -110,9 +110,7 @@ async def get_user_budget(
             .limit(1)
         )
 
-        result = await session.execute(
-            query
-        )
+        result = await session.execute(query)
 
         return result.scalar_one_or_none()
 
@@ -123,7 +121,7 @@ async def set_budget_dashboard(
     message_thread_id: int | None,
     dashboard_message_id: int,
 ) -> None:
-    """Сохранить Telegram-расположение dashboard бюджета."""
+    """Сохранить расположение dashboard бюджета."""
 
     async with SessionFactory() as session:
         budget = await session.get(
@@ -148,11 +146,12 @@ async def get_budget_statistics(
     date_from: date,
     date_to: date,
 ) -> tuple[Decimal, int, list[tuple[str, Decimal]]]:
-    """Получить общую статистику бюджета за период."""
+    """Получить статистику бюджета без удалённых расходов."""
 
     async with SessionFactory() as session:
         filters = [
             Expense.budget_id == budget_id,
+            Expense.is_deleted.is_(False),
             Expense.expense_date >= date_from,
             Expense.expense_date <= date_to,
         ]
@@ -216,7 +215,7 @@ async def get_budget_total(
     date_from: date,
     date_to: date,
 ) -> Decimal:
-    """Получить общую сумму расходов бюджета за период."""
+    """Получить сумму бюджета без удалённых расходов."""
 
     async with SessionFactory() as session:
         query = (
@@ -228,6 +227,7 @@ async def get_budget_total(
             )
             .where(
                 Expense.budget_id == budget_id,
+                Expense.is_deleted.is_(False),
                 Expense.expense_date >= date_from,
                 Expense.expense_date <= date_to,
             )
@@ -242,10 +242,98 @@ async def get_budget_total(
         )
 
 
+async def get_recent_user_expenses(
+    budget_id: int,
+    telegram_user_id: int,
+    limit: int = 10,
+) -> list[Expense]:
+    """Получить последние неудалённые расходы пользователя."""
+
+    async with SessionFactory() as session:
+        query = (
+            select(Expense)
+            .where(
+                Expense.budget_id == budget_id,
+                Expense.telegram_user_id == telegram_user_id,
+                Expense.is_deleted.is_(False),
+            )
+            .order_by(
+                Expense.expense_date.desc(),
+                Expense.id.desc(),
+            )
+            .limit(limit)
+        )
+
+        result = await session.execute(query)
+
+        return list(
+            result.scalars().all()
+        )
+
+
+async def get_user_expense(
+    expense_id: int,
+    budget_id: int,
+    telegram_user_id: int,
+) -> Expense | None:
+    """Получить конкретный неудалённый расход пользователя."""
+
+    async with SessionFactory() as session:
+        query = (
+            select(Expense)
+            .where(
+                Expense.id == expense_id,
+                Expense.budget_id == budget_id,
+                Expense.telegram_user_id == telegram_user_id,
+                Expense.is_deleted.is_(False),
+            )
+            .limit(1)
+        )
+
+        result = await session.execute(query)
+
+        return result.scalar_one_or_none()
+
+
+async def soft_delete_expense(
+    expense_id: int,
+    budget_id: int,
+    telegram_user_id: int,
+) -> bool:
+    """Пометить расход пользователя как удалённый."""
+
+    async with SessionFactory() as session:
+        query = (
+            select(Expense)
+            .where(
+                Expense.id == expense_id,
+                Expense.budget_id == budget_id,
+                Expense.telegram_user_id == telegram_user_id,
+                Expense.is_deleted.is_(False),
+            )
+            .limit(1)
+        )
+
+        result = await session.execute(query)
+        expense = result.scalar_one_or_none()
+
+        if expense is None:
+            return False
+
+        expense.is_deleted = True
+        expense.deleted_at = datetime.now(
+            timezone.utc
+        )
+
+        await session.commit()
+
+        return True
+
+
 # ============================================================
 # LEGACY
-# Старые функции временно оставляем до завершения миграции.
-# После перехода всего приложения на budget_id удалим их.
+# Пока оставляем старые функции до полного удаления
+# chat_id/thread_id из модели расходов.
 # ============================================================
 
 
@@ -260,6 +348,7 @@ async def get_expense_statistics(
     async with SessionFactory() as session:
         filters = [
             Expense.telegram_chat_id == telegram_chat_id,
+            Expense.is_deleted.is_(False),
             Expense.expense_date >= date_from,
             Expense.expense_date <= date_to,
         ]
@@ -295,18 +384,12 @@ async def get_expense_statistics(
         categories_query = (
             select(
                 Expense.category,
-                func.sum(
-                    Expense.amount
-                ).label("total"),
+                func.sum(Expense.amount).label("total"),
             )
             .where(*filters)
-            .group_by(
-                Expense.category
-            )
+            .group_by(Expense.category)
             .order_by(
-                func.sum(
-                    Expense.amount
-                ).desc()
+                func.sum(Expense.amount).desc()
             )
         )
 
@@ -338,6 +421,7 @@ async def get_month_total(
     async with SessionFactory() as session:
         filters = [
             Expense.telegram_chat_id == telegram_chat_id,
+            Expense.is_deleted.is_(False),
             Expense.expense_date >= date_from,
             Expense.expense_date <= date_to,
         ]
@@ -361,9 +445,7 @@ async def get_month_total(
             .where(*filters)
         )
 
-        result = await session.execute(
-            query
-        )
+        result = await session.execute(query)
 
         return Decimal(
             result.scalar_one()
