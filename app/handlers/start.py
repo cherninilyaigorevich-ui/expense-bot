@@ -9,10 +9,23 @@ router = Router()
 
 
 @router.message(CommandStart())
-async def start_handler(message: Message) -> None:
+async def start_handler(
+    message: Message,
+) -> None:
+    if message.from_user is None:
+        return
+
+    # Временно выводим Telegram ID пользователя в консоль.
+    print(
+        "USER:",
+        message.from_user.id,
+        message.from_user.full_name,
+    )
+
     await message.answer(
-        "Привет! 👋\n\n"
-        "Я бот для учёта расходов.\n"
-        "Выбери действие:",
+        "💰 Семейный бюджет\n\n"
+        "Здесь можно добавлять расходы, "
+        "смотреть общую статистику семьи "
+        "и управлять своими расходами.",
         reply_markup=main_menu(),
     )

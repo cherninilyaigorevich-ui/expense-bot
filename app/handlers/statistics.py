@@ -72,11 +72,9 @@ async def statistics_period_handler(
         title = "сегодня"
 
     elif period == "week":
-        date_from = (
-            today - timedelta(days=today.weekday())
-        )
+        date_from = today - timedelta(days=6)
         date_to = today
-        title = "текущую неделю"
+        title = "последние 7 дней"
 
     elif period == "month":
         date_from = today.replace(day=1)

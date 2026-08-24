@@ -8,6 +8,7 @@ annotated-types==0.8.0
 asyncpg==0.31.0
 attrs==26.1.0
 certifi==2026.7.22
+et_xmlfile==2.0.0
 frozenlist==1.8.0
 greenlet==3.5.5
 idna==3.19
@@ -15,6 +16,7 @@ magic-filter==1.0.12
 Mako==1.4.1
 MarkupSafe==3.0.3
 multidict==6.7.1
+openpyxl==3.1.5
 propcache==0.5.2
 pydantic==2.13.4
 pydantic_core==2.46.4
