@@ -72,7 +72,6 @@ def expense_categories() -> InlineKeyboardMarkup:
                     text="✈️ Путешествия",
                     callback_data="expense_category:travel",
                 ),
-            [
                 InlineKeyboardButton(
                     text="📦 Другое",
                     callback_data="expense_category:other",
