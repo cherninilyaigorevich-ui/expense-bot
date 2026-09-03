@@ -63,10 +63,15 @@ def expense_categories() -> InlineKeyboardMarkup:
                     callback_data="expense_category:health",
                 ),
                 InlineKeyboardButton(
+                    text="🏃 Спорт",
+                    callback_data="expense_category:sport",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
                     text="✈️ Путешествия",
                     callback_data="expense_category:travel",
                 ),
-            ],
             [
                 InlineKeyboardButton(
                     text="📦 Другое",

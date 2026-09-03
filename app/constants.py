@@ -6,6 +6,7 @@ CATEGORY_NAMES = {
     "entertainment": "🎮 Развлечения",
     "clothes": "👕 Одежда",
     "health": "💊 Здоровье",
+    "sport": "🏃 Спорт",
     "travel": "✈️ Путешествия",
     "other": "📦 Другое",
 }
