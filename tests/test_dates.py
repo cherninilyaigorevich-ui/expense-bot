@@ -51,3 +51,17 @@ def test_get_month_bounds_february():
 
     assert date_from == date(2028, 2, 1)
     assert date_to == date(2028, 2, 29)
+
+
+def test_local_today_uses_moscow_timezone():
+    from datetime import datetime, timezone
+
+    from app.dates import local_today
+
+    # В UTC ещё 6 сентября, а в Москве уже 7 сентября.
+    now = datetime(
+        2026, 9, 6, 21, 30,
+        tzinfo=timezone.utc,
+    )
+
+    assert local_today(now) == date(2026, 9, 7)
