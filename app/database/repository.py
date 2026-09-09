@@ -23,6 +23,19 @@ class ExpenseExportRow:
     display_name: str
 
 
+
+@dataclass
+class RecentExpenseRow:
+    """Последний расход семейного бюджета."""
+
+    id: int
+    telegram_user_id: int
+    expense_date: date
+    category: str
+    amount: Decimal
+    display_name: str
+
+
 async def create_expense(
     telegram_user_id: int,
     telegram_chat_id: int,
@@ -381,35 +394,62 @@ async def get_budget_expenses_for_export(
         ]
 
 
-async def get_recent_user_expenses(
+async def get_recent_budget_expenses(
     budget_id: int,
-    telegram_user_id: int,
-    limit: int = 10,
-) -> list[Expense]:
-    """Получить последние расходы пользователя."""
+    date_from: date,
+    date_to: date,
+) -> list[RecentExpenseRow]:
+    """Получить расходы всех участников бюджета за период."""
 
     async with SessionFactory() as session:
         query = (
-            select(Expense)
+            select(
+                Expense.id,
+                Expense.telegram_user_id,
+                Expense.expense_date,
+                Expense.category,
+                Expense.amount,
+                BudgetMember.display_name,
+            )
+            .join(
+                BudgetMember,
+                (
+                    BudgetMember.budget_id
+                    == Expense.budget_id
+                )
+                & (
+                    BudgetMember.telegram_user_id
+                    == Expense.telegram_user_id
+                ),
+            )
             .where(
                 Expense.budget_id == budget_id,
-                Expense.telegram_user_id == telegram_user_id,
                 Expense.is_deleted.is_(False),
+                Expense.expense_date >= date_from,
+                Expense.expense_date <= date_to,
             )
             .order_by(
                 Expense.expense_date.desc(),
                 Expense.id.desc(),
             )
-            .limit(limit)
         )
 
-        result = await session.execute(
-            query
-        )
+        result = await session.execute(query)
 
-        return list(
-            result.scalars().all()
-        )
+        return [
+            RecentExpenseRow(
+                id=row.id,
+                telegram_user_id=row.telegram_user_id,
+                expense_date=row.expense_date,
+                category=row.category,
+                amount=Decimal(row.amount),
+                display_name=(
+                    row.display_name
+                    or "Неизвестный участник"
+                ),
+            )
+            for row in result.all()
+        ]
 
 
 async def get_user_expense(

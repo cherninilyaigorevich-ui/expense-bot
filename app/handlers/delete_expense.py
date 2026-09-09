@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from aiogram import F, Router
@@ -9,8 +10,9 @@ from aiogram.types import (
 )
 
 from app.constants import CATEGORY_NAMES
+from app.dates import local_today
 from app.database.repository import (
-    get_recent_user_expenses,
+    get_recent_budget_expenses,
     get_user_budget,
     get_user_expense,
     soft_delete_expense,
@@ -22,6 +24,9 @@ router = Router()
 
 
 def format_money(amount: Decimal) -> str:
+    if amount == amount.to_integral_value():
+        return f"{amount:,.0f}".replace(",", " ")
+
     return f"{amount:,.2f}".replace(",", " ")
 
 
@@ -35,14 +40,16 @@ def expenses_keyboard(
             expense.category,
             expense.category,
         )
+        category_emoji = category_name.split(" ", 1)[0]
 
         buttons.append(
             [
                 InlineKeyboardButton(
                     text=(
-                        f"{category_name} · "
+                        f"{category_emoji} "
                         f"{format_money(expense.amount)} ₽ · "
-                        f"{expense.expense_date.strftime('%d.%m')}"
+                        f"{expense.expense_date.strftime('%d.%m')} · "
+                        f"{expense.display_name}"
                     ),
                     callback_data=f"delete_expense:{expense.id}",
                 )
@@ -94,20 +101,22 @@ async def recent_expenses_handler(
         )
         return
 
-    expenses = await get_recent_user_expenses(
+    today = local_today()
+
+    expenses = await get_recent_budget_expenses(
         budget_id=budget.id,
-        telegram_user_id=message.from_user.id,
-        limit=10,
+        date_from=today - timedelta(days=2),
+        date_to=today,
     )
 
     if not expenses:
         await message.answer(
-            "🗑 У вас нет расходов, которые можно удалить."
+            "🗑 За последние 3 дня расходов нет."
         )
         return
 
     await message.answer(
-        "Выбери расход, который нужно удалить:",
+        "🗑 Расходы за последние 3 дня:",
         reply_markup=expenses_keyboard(expenses),
     )
 
@@ -151,7 +160,7 @@ async def select_expense_handler(
 
     if expense is None:
         await callback.answer(
-            "Расход не найден или уже удалён.",
+            "⛔ Можно удалять только свои расходы.",
             show_alert=True,
         )
         return

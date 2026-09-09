@@ -8,7 +8,7 @@ from app.database.repository import (
     create_budget,
     create_expense,
     get_budget_statistics,
-    get_recent_user_expenses,
+    get_recent_budget_expenses,
     mark_month_archived,
     soft_delete_expense,
     delete_archived_month_expenses,
@@ -47,9 +47,10 @@ async def test_soft_delete_hides_expense():
 
     assert deleted is True
 
-    recent = await get_recent_user_expenses(
+    recent = await get_recent_budget_expenses(
         budget_id=budget.id,
-        telegram_user_id=1001,
+        date_from=date(2026, 8, 10),
+        date_to=date(2026, 8, 10),
     )
 
     assert recent == []
@@ -90,9 +91,10 @@ async def test_user_cannot_delete_another_users_expense():
 
     assert deleted is False
 
-    recent = await get_recent_user_expenses(
+    recent = await get_recent_budget_expenses(
         budget_id=budget.id,
-        telegram_user_id=2001,
+        date_from=date(2026, 8, 11),
+        date_to=date(2026, 8, 11),
     )
 
     assert len(recent) == 1
@@ -178,9 +180,10 @@ async def test_retention_does_not_delete_unarchived_month():
 
     assert deleted_rows == 0
 
-    recent = await get_recent_user_expenses(
+    recent = await get_recent_budget_expenses(
         budget_id=budget.id,
-        telegram_user_id=4001,
+        date_from=date(2026, 4, 1),
+        date_to=date(2026, 4, 30),
     )
 
     assert len(recent) == 1
@@ -221,9 +224,85 @@ async def test_retention_deletes_archived_month():
 
     assert deleted_rows == 1
 
-    recent = await get_recent_user_expenses(
+    recent = await get_recent_budget_expenses(
         budget_id=budget.id,
-        telegram_user_id=5001,
+        date_from=date(2026, 4, 1),
+        date_to=date(2026, 4, 30),
     )
 
     assert recent == []
+
+
+async def test_recent_budget_expenses_include_all_members():
+    budget = await create_budget(
+        "Family budget"
+    )
+
+    await add_budget_member(
+        budget_id=budget.id,
+        telegram_user_id=6001,
+        display_name="Илья",
+    )
+
+    await add_budget_member(
+        budget_id=budget.id,
+        telegram_user_id=6002,
+        display_name="Елизавета",
+    )
+
+    old_expense = await create_expense(
+        telegram_user_id=6001,
+        telegram_chat_id=6001,
+        message_thread_id=None,
+        budget_id=budget.id,
+        category="home",
+        amount=Decimal("400.00"),
+        expense_date=date(2026, 9, 6),
+    )
+
+    ilya_expense = await create_expense(
+        telegram_user_id=6001,
+        telegram_chat_id=6001,
+        message_thread_id=None,
+        budget_id=budget.id,
+        category="transport",
+        amount=Decimal("100.00"),
+        expense_date=date(2026, 9, 9),
+    )
+
+    elizaveta_expense = await create_expense(
+        telegram_user_id=6002,
+        telegram_chat_id=6002,
+        message_thread_id=None,
+        budget_id=budget.id,
+        category="food",
+        amount=Decimal("200.00"),
+        expense_date=date(2026, 9, 8),
+    )
+
+    recent = await get_recent_budget_expenses(
+        budget_id=budget.id,
+        date_from=date(2026, 9, 7),
+        date_to=date(2026, 9, 9),
+    )
+
+    assert len(recent) == 2
+
+    assert recent[0].id == ilya_expense.id
+    assert recent[0].display_name == "Илья"
+
+    assert recent[1].id == elizaveta_expense.id
+    assert recent[1].display_name == "Елизавета"
+
+    assert all(
+        expense.id != old_expense.id
+        for expense in recent
+    )
+
+    deleted = await soft_delete_expense(
+        expense_id=elizaveta_expense.id,
+        budget_id=budget.id,
+        telegram_user_id=6001,
+    )
+
+    assert deleted is False
