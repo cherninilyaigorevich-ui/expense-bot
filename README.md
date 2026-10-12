@@ -69,6 +69,12 @@ The current production installation runs the Python bot through a dedicated **sy
 
 The backup task currently relies on production-specific paths and a container name; monthly maintenance uses a configured-in-code budget ID. These tasks are not part of the standalone demo Compose stack.
 
+For operational checks, backup limitations, and an isolated restore procedure, see [Operations runbook](docs/OPERATIONS.md).
+
+## Screenshots
+
+Screenshots of the Telegram UI will be added using **synthetic demo data** only. No production chats, Telegram IDs, account names, or real financial transactions are published.
+
 ## CI
 
 GitHub Actions runs Python compilation and `pytest` against PostgreSQL 17 on pushes and pull requests. See `.github/workflows/ci.yml`.
@@ -85,4 +91,4 @@ GitHub Actions runs Python compilation and `pytest` against PostgreSQL 17 on pus
 - Parameterize backup container/database names and archive budget IDs
 - Preserve local backups on cloud-upload failures
 - Extend container build and migration smoke tests with runtime integration tests
-- Add a restore drill and deployment runbook
+- Complete and document an isolated restore drill
