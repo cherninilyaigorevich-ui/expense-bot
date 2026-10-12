@@ -12,7 +12,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
@@ -60,3 +60,21 @@ jobs:
       - name: Run tests
         run: |
           pytest -v
+
+  docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Create disposable Compose environment
+        run: |
+          printf 'BOT_TOKEN=123456789:test_token\nPOSTGRES_PASSWORD=ci-demo-password\n' > .env
+      - name: Validate Compose configuration
+        run: docker compose -f compose.demo.yml --env-file .env config --quiet
+      - name: Build bot image
+        run: docker compose -f compose.demo.yml --env-file .env build bot
+      - name: Start database and apply migrations
+        run: docker compose -f compose.demo.yml --env-file .env up --abort-on-container-exit --exit-code-from migrate migrate
+      - name: Cleanup demo stack
+        if: always()
+        run: docker compose -f compose.demo.yml --env-file .env down -v --remove-orphans
