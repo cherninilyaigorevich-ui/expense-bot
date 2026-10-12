@@ -75,7 +75,7 @@ For operational checks, backup limitations, and an isolated restore procedure, s
 
 ### Adding an expense
 
-![Telegram bot: expense entry, date selection and confirmation](docs/screenshots/add-expense.png)
+![Telegram bot: expense entry, date selection and confirmation](add-expense.png)
 
 The bot guides users through category selection, amount entry, date selection, confirmation and persistence in PostgreSQL.
 
