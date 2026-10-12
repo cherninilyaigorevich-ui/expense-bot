@@ -1,5 +1,10 @@
 # Expense Bot
 
+
+[![CI](https://github.com/cherninilyaigorevich-ui/expense-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/cherninilyaigorevich-ui/expense-bot/actions/workflows/ci.yml)
+[![Gitleaks](https://github.com/cherninilyaigorevich-ui/expense-bot/actions/workflows/security-audit.yml/badge.svg)](https://github.com/cherninilyaigorevich-ui/expense-bot/actions/workflows/security-audit.yml)
+
+
 A production-operated Telegram expense tracker built with **Python 3.13, aiogram 3, PostgreSQL 17, SQLAlchemy and Alembic**.
 
 ## Features
