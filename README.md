@@ -71,13 +71,19 @@ The backup task currently relies on production-specific paths and a container na
 
 For operational checks, backup limitations, and an isolated restore procedure, see [Operations runbook](docs/OPERATIONS.md).
 
-## Screenshots
+## Screenshot
 
-Screenshots of the Telegram UI will be added using **synthetic demo data** only. No production chats, Telegram IDs, account names, or real financial transactions are published.
+### Adding an expense
+
+![Telegram bot: expense entry, date selection and confirmation](docs/screenshots/add-expense.png)
+
+The bot guides users through category selection, amount entry, date selection, confirmation and persistence in PostgreSQL.
+
+> Screenshot intended for demonstration only. Use synthetic data and check that no private chats or identifiers are visible before uploading.
 
 ## CI
 
-GitHub Actions runs Python compilation and `pytest` against PostgreSQL 17 on pushes and pull requests. See `.github/workflows/ci.yml`.
+GitHub Actions runs Python compilation and `pytest` against PostgreSQL 17, validates Docker Compose, builds the application image and applies Alembic migrations in a disposable database. Gitleaks scans Git history on pull requests. See `.github/workflows/ci.yml` and `.github/workflows/security-audit.yml`.
 
 ## Security
 
