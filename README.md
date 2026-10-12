@@ -19,22 +19,36 @@ A production-operated Telegram expense tracker built with **Python 3.13, aiogram
 
 ## Architecture
 
-```text
-Telegram users
-      |
-      v
-aiogram bot (long polling)
-      |
-      v
-SQLAlchemy async / asyncpg
-      |
-      v
-PostgreSQL 17
-      |
-      +-- Alembic schema migrations
-      +-- Scheduled pg_dump + pg_restore validation -> Google Drive
-      +-- Monthly export / retention -> Google Drive
+### Production architecture
+
+```mermaid
+flowchart TD
+    U["Telegram users and group chats"] -->|Telegram Bot API| B["Python 3.13 / aiogram 3<br/>Long polling bot"]
+    S["systemd service"] -->|Manages| B
+    B --> O["SQLAlchemy async / asyncpg"]
+    O --> DB[("PostgreSQL 17<br/>Docker container")]
+    A["Alembic migrations"] -->|Schema updates| DB
+
+    T["systemd timers"] --> BK["Database backup task"]
+    T --> M["Monthly maintenance task"]
+    BK -->|"pg_dump and pg_restore validation"| DB
+    BK -->|"Backup upload"| GD["Google Drive"]
+    M -->|Archive and retention| DB
+    M -->|Spreadsheet archive| GD
 ```
+
+### Development and quality checks
+
+```mermaid
+flowchart LR
+    G["Git push / Pull request"] --> CI["GitHub Actions"]
+    CI --> T["Python / pytest<br/>PostgreSQL test service"]
+    CI --> D["Docker image build<br/>Compose validation<br/>Alembic migration smoke test"]
+    CI --> L["Gitleaks<br/>Git history scan"]
+    D -.-> DEMO["Isolated Docker Compose demo<br/>Test Telegram token only"]
+```
+
+> The production bot runs as a systemd service; Docker Compose is provided for an isolated demo and CI validation. Google Drive credentials, database dumps, and expense data are not included in this repository.
 
 ## Local demo with Docker Compose
 
@@ -70,5 +84,5 @@ GitHub Actions runs Python compilation and `pytest` against PostgreSQL 17 on pus
 
 - Parameterize backup container/database names and archive budget IDs
 - Preserve local backups on cloud-upload failures
-- Add container build and migration smoke tests to CI
+- Extend container build and migration smoke tests with runtime integration tests
 - Add a restore drill and deployment runbook
