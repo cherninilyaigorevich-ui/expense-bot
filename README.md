@@ -5,7 +5,7 @@
 [![Gitleaks](https://github.com/cherninilyaigorevich-ui/expense-bot/actions/workflows/security-audit.yml/badge.svg)](https://github.com/cherninilyaigorevich-ui/expense-bot/actions/workflows/security-audit.yml)
 
 
-A reference Telegram expense tracker built with **Python 3.13, aiogram 3, PostgreSQL 17, SQLAlchemy and Alembic**.
+Telegram expense tracker built with **Python 3.13, aiogram 3, PostgreSQL 17, SQLAlchemy and Alembic**.
 
 ## Features
 
@@ -19,7 +19,7 @@ A reference Telegram expense tracker built with **Python 3.13, aiogram 3, Postgr
 
 ## Architecture
 
-### Reference architecture
+### Architecture
 
 ```mermaid
 flowchart TD
@@ -65,7 +65,7 @@ The demo stack runs PostgreSQL privately on its own Docker network, applies Alem
 
 ## Deployment notes
 
-The repository contains a standalone demo and operational examples. Adapt deployment settings to your environment. No real credentials or expense records should be included.
+Docker Compose provides a local test environment. For other deployments, configure the database, service unit, and backup jobs separately.
 
 ## Screenshot
 
@@ -75,7 +75,7 @@ The repository contains a standalone demo and operational examples. Adapt deploy
 
 The bot guides users through category selection, amount entry, date selection, confirmation and persistence in PostgreSQL.
 
-> Screenshot intended for demonstration only. Use synthetic data and check that no private chats or identifiers are visible before uploading.
+
 
 ## CI
 
