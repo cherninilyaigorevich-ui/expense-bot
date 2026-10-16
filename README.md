@@ -5,7 +5,7 @@
 [![Gitleaks](https://github.com/cherninilyaigorevich-ui/expense-bot/actions/workflows/security-audit.yml/badge.svg)](https://github.com/cherninilyaigorevich-ui/expense-bot/actions/workflows/security-audit.yml)
 
 
-A production-operated Telegram expense tracker built with **Python 3.13, aiogram 3, PostgreSQL 17, SQLAlchemy and Alembic**.
+A reference Telegram expense tracker built with **Python 3.13, aiogram 3, PostgreSQL 17, SQLAlchemy and Alembic**.
 
 ## Features
 
@@ -19,7 +19,7 @@ A production-operated Telegram expense tracker built with **Python 3.13, aiogram
 
 ## Architecture
 
-### Production architecture
+### Reference architecture
 
 ```mermaid
 flowchart TD
@@ -48,7 +48,7 @@ flowchart LR
     D -.-> DEMO["Isolated Docker Compose demo<br/>Test Telegram token only"]
 ```
 
-> The production bot runs as a systemd service; Docker Compose is provided for an isolated demo and CI validation. Google Drive credentials, database dumps, and expense data are not included in this repository.
+> One deployment option runs as a systemd service; Docker Compose is provided for an isolated demo and CI validation. Google Drive credentials, database dumps, and expense data are not included in this repository.
 
 ## Local demo with Docker Compose
 
@@ -63,13 +63,9 @@ The demo stack runs PostgreSQL privately on its own Docker network, applies Alem
 
 > Passwords used in the example connection URL should be URL-safe. The Compose demo is separate from the existing production deployment.
 
-## Existing production deployment
+## Deployment notes
 
-The current production installation runs the Python bot through a dedicated **systemd** service and PostgreSQL 17 in Docker. Separate systemd timers schedule database backup and monthly maintenance. The demo Compose stack is **not** the production deployment procedure.
-
-The backup task currently relies on production-specific paths and a container name; monthly maintenance uses a configured-in-code budget ID. These tasks are not part of the standalone demo Compose stack.
-
-For operational checks, backup limitations, and an isolated restore procedure, see [Operations runbook](docs/OPERATIONS.md).
+The repository contains a standalone demo and operational examples. Adapt deployment settings to your environment. No real credentials or expense records should be included.
 
 ## Screenshot
 
