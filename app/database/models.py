@@ -210,6 +210,11 @@ class Expense(Base):
         index=True,
     )
 
+    comment: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
     is_deleted: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

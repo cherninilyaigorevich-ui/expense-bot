@@ -21,6 +21,7 @@ class ExpenseExportRow:
     category: str
     amount: Decimal
     display_name: str
+    comment: str | None
 
 
 
@@ -44,11 +45,13 @@ async def create_expense(
     amount: Decimal,
     expense_date: date,
     budget_id: int | None = None,
+    comment: str | None = None,
 ) -> Expense:
     """Создать новый расход."""
 
     async with SessionFactory() as session:
         expense = Expense(
+            comment=comment,
             telegram_user_id=telegram_user_id,
             telegram_chat_id=telegram_chat_id,
             message_thread_id=message_thread_id,
@@ -352,6 +355,7 @@ async def get_budget_expenses_for_export(
                 Expense.category,
                 Expense.amount,
                 BudgetMember.display_name,
+                Expense.comment,
             )
             .join(
                 BudgetMember,
@@ -385,6 +389,7 @@ async def get_budget_expenses_for_export(
                 expense_date=row.expense_date,
                 category=row.category,
                 amount=Decimal(row.amount),
+                comment=row.comment,
                 display_name=(
                     row.display_name
                     or "Неизвестный участник"
