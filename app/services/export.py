@@ -55,6 +55,7 @@ async def create_budget_xlsx(
         "Категория",
         "Сумма",
         "Кто добавил",
+        "Комментарий",
     ]
 
     sheet.append(headers)
@@ -84,6 +85,7 @@ async def create_budget_xlsx(
                 category_name,
                 money_to_excel(expense.amount),
                 expense.display_name,
+                expense.comment or "",
             ]
         )
 
@@ -130,6 +132,7 @@ async def create_budget_xlsx(
         2: 30,
         3: 18,
         4: 22,
+        5: 45,
     }
 
     for column_number, width in column_widths.items():
