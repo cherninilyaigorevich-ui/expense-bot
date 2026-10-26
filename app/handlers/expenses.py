@@ -26,6 +26,8 @@ MAX_EXPENSE_AMOUNT = Decimal("100000000.00")
 
 
 def format_money(amount: Decimal) -> str:
+    if amount == amount.to_integral_value():
+        return f"{amount:,.0f}".replace(",", " ")
     return f"{amount:,.2f}".replace(",", " ")
 
 
@@ -55,6 +57,12 @@ def date_keyboard() -> InlineKeyboardMarkup:
 def confirmation_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="💬 Добавить / изменить комментарий",
+                    callback_data="expense_confirm:comment",
+                ),
+            ],
             [
                 InlineKeyboardButton(
                     text="✅ Сохранить",
@@ -315,9 +323,48 @@ async def show_confirmation(
         "🔎 Проверь расход:\n\n"
         f"{CATEGORY_NAMES[category]}\n"
         f"💰 {format_money(amount)} ₽\n"
-        f"📅 {expense_date.strftime('%d.%m.%Y')}",
+        f"📅 {expense_date.strftime('%d.%m.%Y')}\n"
+        f"💬 {data.get('comment') or 'Не указан'}",
         reply_markup=confirmation_keyboard(),
     )
+
+
+@router.callback_query(
+    AddExpense.waiting_for_confirmation,
+    F.data == "expense_confirm:comment",
+)
+async def request_expense_comment(
+    callback: CallbackQuery,
+    state: FSMContext,
+) -> None:
+    await callback.answer()
+    await state.set_state(AddExpense.waiting_for_comment)
+
+    if callback.message is not None:
+        await callback.message.answer(
+            "💬 Введи комментарий к расходу (до 500 символов):"
+        )
+
+
+@router.message(AddExpense.waiting_for_comment)
+async def receive_expense_comment(
+    message: Message,
+    state: FSMContext,
+) -> None:
+    if not message.text or not message.text.strip():
+        await message.answer("❌ Введи текст комментария.")
+        return
+
+    comment = message.text.strip()
+
+    if len(comment) > 500:
+        await message.answer(
+            "❌ Комментарий слишком длинный. Максимум 500 символов."
+        )
+        return
+
+    await state.update_data(comment=comment)
+    await show_confirmation(message, state)
 
 
 @router.callback_query(
@@ -359,6 +406,7 @@ async def save_expense_handler(
         category=category,
         amount=amount,
         expense_date=expense_date,
+        comment=data.get("comment"),
     )
 
     await update_budget_dashboard(
@@ -370,9 +418,10 @@ async def save_expense_handler(
 
     await callback.message.answer(
         "✅ Расход добавлен\n\n"
-        f"{CATEGORY_NAMES[expense.category]} — "
-        f"{format_money(expense.amount)} ₽\n"
+        f"{CATEGORY_NAMES[expense.category]}\n"
+        f"💰 {format_money(expense.amount)} ₽\n"
         f"📅 {expense.expense_date.strftime('%d.%m.%Y')}"
+        + (f"\n💬 {expense.comment}" if expense.comment else "")
     )
 
     await state.clear()
