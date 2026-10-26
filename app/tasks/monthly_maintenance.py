@@ -1,6 +1,7 @@
 import asyncio
 from datetime import date
 
+from app.dates import local_today
 from app.database.repository import count_budget_expenses
 from app.services.archive import (
     get_month_bounds,
@@ -28,7 +29,7 @@ def previous_month(
 
 
 async def main() -> None:
-    today = date.today()
+    today = local_today()
 
     year, month = previous_month(
         today

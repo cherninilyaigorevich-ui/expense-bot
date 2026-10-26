@@ -1,5 +1,6 @@
 from datetime import date
 
+from app.dates import local_today
 from app.database.repository import (
     delete_archived_month_expenses,
     is_month_archived,
@@ -39,7 +40,7 @@ async def cleanup_old_expenses(
     """
 
     if today is None:
-        today = date.today()
+        today = local_today()
 
     # Если сейчас август и RETENTION_MONTHS=3,
     # храним июнь, июль, август.

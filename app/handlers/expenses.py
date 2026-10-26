@@ -10,6 +10,7 @@ from aiogram.types import (
     Message,
 )
 
+from app.dates import local_today
 from app.constants import CATEGORY_NAMES
 from app.database.repository import (
     create_expense,
@@ -239,11 +240,11 @@ async def date_selected_handler(
     await callback.answer()
 
     if choice == "today":
-        expense_date = date.today()
+        expense_date = local_today()
 
     elif choice == "yesterday":
         expense_date = (
-            date.today()
+            local_today()
             - timedelta(days=1)
         )
 
