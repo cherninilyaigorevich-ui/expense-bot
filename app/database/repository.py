@@ -44,11 +44,13 @@ async def create_expense(
     amount: Decimal,
     expense_date: date,
     budget_id: int | None = None,
+    comment: str | None = None,
 ) -> Expense:
     """Создать новый расход."""
 
     async with SessionFactory() as session:
         expense = Expense(
+            comment=comment,
             telegram_user_id=telegram_user_id,
             telegram_chat_id=telegram_chat_id,
             message_thread_id=message_thread_id,

@@ -5,3 +5,4 @@ class AddExpense(StatesGroup):
     waiting_for_amount = State()
     waiting_for_date = State()
     waiting_for_confirmation = State()
+    waiting_for_comment = State()
