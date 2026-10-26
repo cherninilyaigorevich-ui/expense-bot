@@ -7,6 +7,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
+from app.dates import local_today
 from app.constants import CATEGORY_NAMES
 from app.database.repository import (
     get_budget_statistics,
@@ -51,7 +52,7 @@ async def build_panel_text(
 ) -> str:
     """Сформировать текст dashboard семейного бюджета."""
 
-    today = date.today()
+    today = local_today()
     month_start = today.replace(day=1)
 
     total_amount, operations_count, categories = (

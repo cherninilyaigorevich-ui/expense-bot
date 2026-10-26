@@ -4,6 +4,7 @@ from decimal import Decimal
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
 
+from app.dates import local_today
 from app.constants import CATEGORY_NAMES
 from app.database.repository import (
     get_budget,
@@ -43,7 +44,7 @@ async def build_budget_dashboard_text(
 ) -> str:
     """Сформировать текущий dashboard семейного бюджета."""
 
-    today = date.today()
+    today = local_today()
     month_start = today.replace(
         day=1
     )

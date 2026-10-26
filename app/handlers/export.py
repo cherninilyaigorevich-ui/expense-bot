@@ -7,6 +7,7 @@ from aiogram.types import (
     Message,
 )
 
+from app.dates import local_today
 from app.database.repository import get_user_budget
 from app.keyboards.export import export_period_keyboard
 from app.services.export import create_budget_xlsx
@@ -60,7 +61,7 @@ async def export_period_handler(
 
     period = callback.data.split(":", 1)[1]
 
-    today = date.today()
+    today = local_today()
 
     if period == "week":
         date_from = today - timedelta(days=6)

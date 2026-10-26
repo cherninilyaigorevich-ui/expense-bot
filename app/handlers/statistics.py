@@ -4,6 +4,7 @@ from decimal import Decimal
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
 
+from app.dates import local_today
 from app.constants import CATEGORY_NAMES
 from app.database.repository import (
     get_budget_statistics,
@@ -64,7 +65,7 @@ async def statistics_period_handler(
 
     period = callback.data.split(":", 1)[1]
 
-    today = date.today()
+    today = local_today()
 
     if period == "today":
         date_from = today
