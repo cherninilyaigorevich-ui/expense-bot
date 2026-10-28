@@ -82,19 +82,3 @@ The bot guides users through category selection, amount entry, date selection, c
 ## CI
 
 GitHub Actions runs Python compilation and `pytest` against PostgreSQL 17, validates Docker Compose, builds the application image and applies Alembic migrations in a disposable database. Gitleaks scans Git history on pull requests. See `.github/workflows/ci.yml` and `.github/workflows/security-audit.yml`.
-
-## Security
-
-- Do not commit `.env`, OAuth tokens, private keys, backups or expense exports.
-- Treat database dumps and spreadsheets as sensitive personal data.
-- Do not publish real Telegram chat IDs, user IDs, private chat screenshots, real income amounts or financial records.
-- Replace personal names, hostnames, server IP addresses and file IDs with placeholders in public documentation.
-- Audit **Git history**, not just the current working tree, before making this repository public.
-- Never reuse production credentials in a demo environment.
-
-## Planned improvements
-
-- Parameterize backup container/database names and archive budget IDs
-- Preserve local backups on cloud-upload failures
-- Extend container build and migration smoke tests with runtime integration tests
-- Complete and document an isolated restore drill
