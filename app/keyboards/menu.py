@@ -14,11 +14,11 @@ def main_menu() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="💵 Добавить доход"),
             ],
             [
-                KeyboardButton(text="📊 Статистика"),
                 KeyboardButton(text="🗑 Последние расходы"),
+                KeyboardButton(text="🗑 Последние доходы"),
             ],
             [
-                KeyboardButton(text="🗑 Последние доходы"),
+                KeyboardButton(text="📊 Статистика"),
                 KeyboardButton(text="📤 Выгрузка"),
             ],
         ],
