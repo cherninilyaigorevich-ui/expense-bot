@@ -63,6 +63,10 @@ class Budget(Base):
         back_populates="budget",
     )
 
+    incomes: Mapped[list["Income"]] = relationship(
+        back_populates="budget",
+    )
+
     archives: Mapped[list["ArchiveMonth"]] = relationship(
         back_populates="budget",
         cascade="all, delete-orphan",
@@ -146,6 +150,10 @@ class ArchiveMonth(Base):
 
     month: Mapped[int] = mapped_column(
         nullable=False,
+    )
+
+    incomes_archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     archived_at: Mapped[datetime] = mapped_column(
@@ -235,4 +243,62 @@ class Expense(Base):
 
     budget: Mapped["Budget | None"] = relationship(
         back_populates="expenses",
+    )
+
+
+class Income(Base):
+    __tablename__ = "incomes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    budget_id: Mapped[int] = mapped_column(
+        ForeignKey("budgets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, index=True,
+    )
+
+    telegram_chat_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False,
+    )
+
+    message_thread_id: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True,
+    )
+
+    category: Mapped[str] = mapped_column(
+        String(50), nullable=False,
+    )
+
+    amount: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False,
+    )
+
+    income_date: Mapped[date] = mapped_column(
+        Date, nullable=False, index=True,
+    )
+
+    comment: Mapped[str | None] = mapped_column(
+        String(500), nullable=True,
+    )
+
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False,
+        default=False, server_default="false",
+    )
+
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False, server_default=func.now(),
+    )
+
+    budget: Mapped["Budget"] = relationship(
+        back_populates="incomes",
     )

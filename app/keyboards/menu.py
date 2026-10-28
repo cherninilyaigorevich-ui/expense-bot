@@ -11,6 +11,7 @@ def main_menu() -> ReplyKeyboardMarkup:
         keyboard=[
             [
                 KeyboardButton(text="💸 Добавить расход"),
+                KeyboardButton(text="💵 Добавить доход"),
                 KeyboardButton(text="📊 Статистика"),
             ],
             [

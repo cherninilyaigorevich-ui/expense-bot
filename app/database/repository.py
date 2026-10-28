@@ -9,6 +9,7 @@ from app.database.models import (
     Budget,
     BudgetMember,
     Expense,
+    Income,
 )
 from app.database.session import SessionFactory
 
@@ -559,6 +560,8 @@ async def mark_month_archived(
                 timezone.utc
             )
 
+        archive.incomes_archived_at = datetime.now(timezone.utc)
+
         await session.commit()
 
 
@@ -642,3 +645,181 @@ async def delete_archived_month_expenses(
         await session.commit()
 
         return result.rowcount or 0
+
+
+async def create_income(
+    telegram_user_id: int,
+    telegram_chat_id: int,
+    message_thread_id: int | None,
+    budget_id: int,
+    category: str,
+    amount: Decimal,
+    income_date: date,
+    comment: str | None = None,
+) -> Income:
+    """Создать доход семейного бюджета."""
+    async with SessionFactory() as session:
+        income = Income(
+            telegram_user_id=telegram_user_id,
+            telegram_chat_id=telegram_chat_id,
+            message_thread_id=message_thread_id,
+            budget_id=budget_id,
+            category=category,
+            amount=amount,
+            income_date=income_date,
+            comment=comment,
+        )
+        session.add(income)
+        await session.commit()
+        await session.refresh(income)
+        return income
+
+
+@dataclass
+class IncomeExportRow:
+    income_date: date
+    category: str
+    amount: Decimal
+    display_name: str
+    comment: str | None
+
+
+async def get_budget_incomes_for_export(
+    budget_id: int,
+    date_from: date,
+    date_to: date,
+) -> list[IncomeExportRow]:
+    async with SessionFactory() as session:
+        query = (
+            select(
+                Income.income_date,
+                Income.category,
+                Income.amount,
+                BudgetMember.display_name,
+                Income.comment,
+            )
+            .outerjoin(
+                BudgetMember,
+                (BudgetMember.budget_id == Income.budget_id)
+                & (
+                    BudgetMember.telegram_user_id
+                    == Income.telegram_user_id
+                ),
+            )
+            .where(
+                Income.budget_id == budget_id,
+                Income.is_deleted.is_(False),
+                Income.income_date >= date_from,
+                Income.income_date <= date_to,
+            )
+            .order_by(Income.income_date, Income.id)
+        )
+
+        result = await session.execute(query)
+
+        return [
+            IncomeExportRow(
+                income_date=row.income_date,
+                category=row.category,
+                amount=Decimal(row.amount),
+                display_name=row.display_name or "Неизвестный участник",
+                comment=row.comment,
+            )
+            for row in result.all()
+        ]
+
+
+async def get_budget_income_statistics(
+    budget_id: int,
+    date_from: date,
+    date_to: date,
+) -> tuple[Decimal, int, list[tuple[str, Decimal]]]:
+    async with SessionFactory() as session:
+        filters = (
+            Income.budget_id == budget_id,
+            Income.is_deleted.is_(False),
+            Income.income_date >= date_from,
+            Income.income_date <= date_to,
+        )
+
+        result = await session.execute(
+            select(
+                func.coalesce(
+                    func.sum(Income.amount), Decimal("0.00")
+                ),
+                func.count(Income.id),
+            ).where(*filters)
+        )
+
+        total, count = result.one()
+
+        result = await session.execute(
+            select(Income.category, func.sum(Income.amount))
+            .where(*filters)
+            .group_by(Income.category)
+            .order_by(Income.category)
+        )
+
+        return (
+            Decimal(total),
+            int(count),
+            [
+                (category, Decimal(amount))
+                for category, amount in result.all()
+            ],
+        )
+
+
+async def count_budget_incomes(
+    budget_id: int,
+    date_from: date,
+    date_to: date,
+) -> int:
+    async with SessionFactory() as session:
+        result = await session.execute(
+            select(func.count(Income.id)).where(
+                Income.budget_id == budget_id,
+                Income.is_deleted.is_(False),
+                Income.income_date >= date_from,
+                Income.income_date <= date_to,
+            )
+        )
+        return int(result.scalar_one())
+
+
+async def delete_archived_month_incomes(
+    budget_id: int,
+    year: int,
+    month: int,
+) -> int:
+    """Удалять доходы только после их успешной архивации."""
+    start = date(year, month, 1)
+    end = (
+        date(year + 1, 1, 1)
+        if month == 12
+        else date(year, month + 1, 1)
+    )
+
+    async with SessionFactory() as session:
+        result = await session.execute(
+            select(ArchiveMonth.id).where(
+                ArchiveMonth.budget_id == budget_id,
+                ArchiveMonth.year == year,
+                ArchiveMonth.month == month,
+                ArchiveMonth.incomes_archived_at.is_not(None),
+            )
+        )
+
+        if result.scalar_one_or_none() is None:
+            return 0
+
+        deleted = await session.execute(
+            delete(Income).where(
+                Income.budget_id == budget_id,
+                Income.income_date >= start,
+                Income.income_date < end,
+            )
+        )
+
+        await session.commit()
+        return deleted.rowcount or 0

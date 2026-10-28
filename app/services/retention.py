@@ -3,6 +3,7 @@ from datetime import date
 from app.dates import local_today
 from app.database.repository import (
     delete_archived_month_expenses,
+    delete_archived_month_incomes,
     is_month_archived,
 )
 
@@ -85,6 +86,13 @@ async def cleanup_old_expenses(
                     month=month,
                 )
             )
+
+            deleted_income_rows = await delete_archived_month_incomes(
+                budget_id=budget_id,
+                year=year,
+                month=month,
+            )
+            deleted_rows += deleted_income_rows
 
             deleted_months.append(
                 (
