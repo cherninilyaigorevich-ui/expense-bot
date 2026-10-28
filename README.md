@@ -5,15 +5,17 @@
 [![Gitleaks](https://github.com/cherninilyaigorevich-ui/expense-bot/actions/workflows/security-audit.yml/badge.svg)](https://github.com/cherninilyaigorevich-ui/expense-bot/actions/workflows/security-audit.yml)
 
 
-A reference Telegram expense tracker built with **Python 3.13, aiogram 3, PostgreSQL 17, SQLAlchemy and Alembic**.
+A reference Telegram family budget tracker built with **Python 3.13, aiogram 3, PostgreSQL 17, SQLAlchemy and Alembic**.
 
 ## Features
 
 - Track expenses by category, amount and date
+- Track family income by person, amount, date and optional comment
 - Shared budgets with Telegram members, chat and topic support
-- Statistics and spreadsheet export
+- Monthly income, expense and balance statistics
+- Spreadsheet export with summary, expenses and income worksheets
 - Soft deletion of expenses
-- Monthly archive and data retention workflows
+- Monthly Google Drive spreadsheet archive and data retention workflows, including income archival safeguards
 - PostgreSQL custom-format backups, archive validation and Google Drive upload
 - Automated tests with GitHub Actions and PostgreSQL
 
@@ -85,6 +87,8 @@ GitHub Actions runs Python compilation and `pytest` against PostgreSQL 17, valid
 
 - Do not commit `.env`, OAuth tokens, private keys, backups or expense exports.
 - Treat database dumps and spreadsheets as sensitive personal data.
+- Do not publish real Telegram chat IDs, user IDs, private chat screenshots, real income amounts or financial records.
+- Replace personal names, hostnames, server IP addresses and file IDs with placeholders in public documentation.
 - Audit **Git history**, not just the current working tree, before making this repository public.
 - Never reuse production credentials in a demo environment.
 
