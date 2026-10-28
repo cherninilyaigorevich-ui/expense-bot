@@ -12,10 +12,12 @@ def main_menu() -> ReplyKeyboardMarkup:
             [
                 KeyboardButton(text="💸 Добавить расход"),
                 KeyboardButton(text="💵 Добавить доход"),
-                KeyboardButton(text="📊 Статистика"),
             ],
             [
+                KeyboardButton(text="📊 Статистика"),
                 KeyboardButton(text="🗑 Последние расходы"),
+            ],
+            [
                 KeyboardButton(text="📤 Выгрузка"),
             ],
         ],
