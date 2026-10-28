@@ -823,3 +823,70 @@ async def delete_archived_month_incomes(
 
         await session.commit()
         return deleted.rowcount or 0
+
+
+async def get_recent_budget_incomes(
+    budget_id: int,
+    date_from: date,
+    date_to: date,
+):
+    """Доходы участников бюджета за период."""
+    async with SessionFactory() as session:
+        result = await session.execute(
+            select(Income)
+            .where(
+                Income.budget_id == budget_id,
+                Income.is_deleted.is_(False),
+                Income.income_date >= date_from,
+                Income.income_date <= date_to,
+            )
+            .order_by(Income.income_date.desc(), Income.id.desc())
+        )
+        return list(result.scalars().all())
+
+
+async def get_user_income(
+    income_id: int,
+    budget_id: int,
+    telegram_user_id: int,
+):
+    """Получить собственный доход."""
+    async with SessionFactory() as session:
+        result = await session.execute(
+            select(Income)
+            .where(
+                Income.id == income_id,
+                Income.budget_id == budget_id,
+                Income.telegram_user_id == telegram_user_id,
+                Income.is_deleted.is_(False),
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+
+async def soft_delete_income(
+    income_id: int,
+    budget_id: int,
+    telegram_user_id: int,
+) -> bool:
+    """Мягкое удаление собственного дохода."""
+    async with SessionFactory() as session:
+        result = await session.execute(
+            select(Income)
+            .where(
+                Income.id == income_id,
+                Income.budget_id == budget_id,
+                Income.telegram_user_id == telegram_user_id,
+                Income.is_deleted.is_(False),
+            )
+            .limit(1)
+        )
+        income = result.scalar_one_or_none()
+        if income is None:
+            return False
+
+        income.is_deleted = True
+        income.deleted_at = datetime.now(timezone.utc)
+        await session.commit()
+        return True

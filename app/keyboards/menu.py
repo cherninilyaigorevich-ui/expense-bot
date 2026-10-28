@@ -18,6 +18,7 @@ def main_menu() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="🗑 Последние расходы"),
             ],
             [
+                KeyboardButton(text="🗑 Последние доходы"),
                 KeyboardButton(text="📤 Выгрузка"),
             ],
         ],

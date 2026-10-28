@@ -5,6 +5,7 @@ from aiogram import Bot, Dispatcher
 
 from app.config import BOT_TOKEN
 from app.handlers.delete_expense import router as delete_expense_router
+from app.handlers.delete_income import router as delete_income_router
 from app.handlers.expenses import router as expenses_router
 from app.handlers.incomes import router as incomes_router
 from app.handlers.export import router as export_router
@@ -40,6 +41,7 @@ async def main() -> None:
         expenses_router
     )
     dp.include_router(incomes_router)
+    dp.include_router(delete_income_router)
     dp.include_router(
         delete_expense_router
     )
