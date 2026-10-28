@@ -8,6 +8,7 @@ from openpyxl.styles import Alignment, Font
 from app.constants import CATEGORY_NAMES
 from app.database.repository import (
     get_budget_expenses_for_export,
+    get_budget_incomes_for_export,
     mark_month_archived,
 )
 from app.services.google_drive import (
@@ -366,6 +367,91 @@ async def write_month_to_sheet(
             current_row += 1
 
 
+async def append_income_summary(
+    sheet,
+    budget_id: int,
+    year: int,
+    month: int,
+) -> None:
+    """Добавить доходы и баланс после расходов месяца."""
+    date_from, date_to = get_month_bounds(year, month)
+
+    incomes = await get_budget_incomes_for_export(
+        budget_id=budget_id,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+    expenses = await get_budget_expenses_for_export(
+        budget_id=budget_id,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+    income_names = {
+        "ilya": "Илья",
+        "liza": "Лиза",
+    }
+
+    income_total = sum(
+        (item.amount for item in incomes),
+        Decimal("0.00"),
+    )
+    expense_total = sum(
+        (item.amount for item in expenses),
+        Decimal("0.00"),
+    )
+
+    row = sheet.max_row + 2
+
+    sheet.cell(row, 1, "ДОХОДЫ")
+    sheet.cell(row, 1).font = Font(bold=True, size=12)
+    row += 1
+
+    for title, column in enumerate(
+        ("Дата", "Категория", "Сумма", "Кто добавил", "Комментарий"),
+        start=1,
+    ):
+        sheet.cell(row, title, column).font = Font(bold=True)
+
+    row += 1
+
+    for income in incomes:
+        values = (
+            income.income_date.strftime("%d.%m.%Y"),
+            income_names.get(income.category, income.category),
+            float(income.amount),
+            income.display_name,
+            income.comment or "",
+        )
+
+        for column, value in enumerate(values, start=1):
+            sheet.cell(row, column, value)
+
+        sheet.cell(row, 3).number_format = '#,##0.00'
+        row += 1
+
+    if not incomes:
+        sheet.cell(row, 1, "Доходов за месяц нет.")
+        row += 1
+
+    row += 1
+
+    totals = (
+        ("ВСЕГО ДОХОДОВ", income_total),
+        ("ВСЕГО РАСХОДОВ", expense_total),
+        ("БАЛАНС", income_total - expense_total),
+    )
+
+    for title, amount in totals:
+        sheet.cell(row, 2, title).font = Font(bold=True)
+        sheet.cell(row, 3, float(amount)).font = Font(bold=True)
+        sheet.cell(row, 3).number_format = '#,##0.00'
+        row += 1
+
+    sheet.column_dimensions["E"].width = 45
+
+
 async def update_month_archive(
     budget_id: int,
     year: int,
@@ -396,6 +482,13 @@ async def update_month_archive(
         )
 
         await write_month_to_sheet(
+            sheet=sheet,
+            budget_id=budget_id,
+            year=year,
+            month=month,
+        )
+
+        await append_income_summary(
             sheet=sheet,
             budget_id=budget_id,
             year=year,

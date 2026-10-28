@@ -8,6 +8,7 @@ from app.dates import local_today
 from app.constants import CATEGORY_NAMES
 from app.database.repository import (
     get_budget_statistics,
+    get_budget_income_statistics,
     get_user_budget,
 )
 from app.keyboards.statistics import statistics_period_keyboard
@@ -99,9 +100,18 @@ async def statistics_period_handler(
         )
     )
 
-    if operations_count == 0:
+
+    income_total, income_count, income_categories = (
+        await get_budget_income_statistics(
+            budget_id=budget.id,
+            date_from=date_from,
+            date_to=date_to,
+        )
+    )
+
+    if operations_count == 0 and income_count == 0:
         await callback.message.answer(
-            f"📊 За {title} расходов пока нет."
+            f"📊 За {title} операций пока нет."
         )
         return
 
@@ -129,11 +139,18 @@ async def statistics_period_handler(
         category_lines
     )
 
+
+    income_by_person = dict(income_categories)
+
     await callback.message.answer(
         f"📊 Семейный бюджет за {title}\n\n"
-        f"💰 Всего: {format_money(total_amount)} ₽\n"
-        f"🧾 Операций: {operations_count}\n\n"
-        f"{categories_text}\n\n"
-        f"📅 {date_from.strftime('%d.%m.%Y')}"
-        f" — {date_to.strftime('%d.%m.%Y')}"
+        f"💵 Доходы: {format_money(income_total)} ₽\n"
+        f"   👨 Илья: {format_money(income_by_person.get('ilya', Decimal('0')))} ₽\n"
+        f"   👩 Лиза: {format_money(income_by_person.get('liza', Decimal('0')))} ₽\n"
+        f"💸 Расходы: {format_money(total_amount)} ₽\n"
+        f"💰 Баланс: {format_money(income_total - total_amount)} ₽\n"
+        f"🧾 Операций: {operations_count + income_count}\n\n"
+        f"Расходы по категориям:\n"
+        f"{categories_text or 'Нет расходов'}\n\n"
+        f"📅 {date_from:%d.%m.%Y} — {date_to:%d.%m.%Y}"
     )

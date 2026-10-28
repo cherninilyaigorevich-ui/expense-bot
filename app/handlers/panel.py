@@ -11,6 +11,7 @@ from app.dates import local_today
 from app.constants import CATEGORY_NAMES
 from app.database.repository import (
     get_budget_statistics,
+    get_budget_income_statistics,
     set_budget_dashboard,
 )
 from app.keyboards.panel import budget_panel
@@ -63,6 +64,16 @@ async def build_panel_text(
         )
     )
 
+    income_total, income_count, income_categories = (
+        await get_budget_income_statistics(
+            budget_id=budget_id,
+            date_from=month_start,
+            date_to=today,
+        )
+    )
+
+    income_by_person = dict(income_categories)
+
     month_name = MONTH_NAMES[
         today.month
     ]
@@ -72,8 +83,12 @@ async def build_panel_text(
         "",
         f"📊 {month_name} {today.year}",
         "",
-        f"💰 Всего: {format_money(total_amount)} ₽",
-        f"🧾 Операций: {operations_count}",
+        f"💵 Доходы: {format_money(income_total)} ₽",
+        f"   👨 Илья: {format_money(income_by_person.get('ilya', Decimal('0')))} ₽",
+        f"   👩 Лиза: {format_money(income_by_person.get('liza', Decimal('0')))} ₽",
+        f"💸 Расходы: {format_money(total_amount)} ₽",
+        f"💰 Баланс: {format_money(income_total - total_amount)} ₽",
+        f"🧾 Операций: {operations_count + income_count}",
     ]
 
     if categories:

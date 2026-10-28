@@ -2,7 +2,7 @@ import asyncio
 from datetime import date
 
 from app.dates import local_today
-from app.database.repository import count_budget_expenses
+from app.database.repository import count_budget_expenses, count_budget_incomes
 from app.services.archive import (
     get_month_bounds,
     update_month_archive,
@@ -46,7 +46,13 @@ async def main() -> None:
         date_to=date_to,
     )
 
-    if expenses_count == 0:
+    incomes_count = await count_budget_incomes(
+        budget_id=FAMILY_BUDGET_ID,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+    if expenses_count == 0 and incomes_count == 0:
         print(
             f"Archive skipped: "
             f"{year}-{month:02d} has no expenses."
@@ -55,7 +61,7 @@ async def main() -> None:
     else:
         print(
             f"Archiving {year}-{month:02d} "
-            f"({expenses_count} expenses)..."
+            f"({expenses_count} expenses, {incomes_count} incomes)..."
         )
 
         file_id = await update_month_archive(
