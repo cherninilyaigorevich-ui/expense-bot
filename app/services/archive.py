@@ -210,6 +210,7 @@ async def write_month_to_sheet(
         "Категория",
         "Сумма",
         "Кто добавил",
+        "Комментарий",
     ]
 
     for column_number, header in enumerate(
@@ -267,6 +268,12 @@ async def write_month_to_sheet(
             row=current_row,
             column=4,
             value=expense.display_name,
+        )
+
+        sheet.cell(
+            row=current_row,
+            column=5,
+            value=expense.comment or "",
         )
 
         sheet.cell(
